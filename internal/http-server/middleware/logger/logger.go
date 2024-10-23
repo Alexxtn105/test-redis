@@ -26,8 +26,9 @@ func New(log *slog.Logger) func(next http.Handler) http.Handler {
 				slog.String("method", r.Method),
 				slog.String("path", r.URL.Path),
 				slog.String("remote_addr", r.RemoteAddr),
-				slog.String("user_agent", r.UserAgent()),
-				slog.String("request_id", middleware.GetReqID(r.Context())),
+				//можно еще это прикрутить, для полной картины
+				//slog.String("user_agent", r.UserAgent()),
+				//slog.String("request_id", middleware.GetReqID(r.Context())),
 			)
 
 			// создаем обертку вокруг `http.ResponseWriter`
@@ -47,7 +48,7 @@ func New(log *slog.Logger) func(next http.Handler) http.Handler {
 				)
 			}()
 
-			//передаем управление следующему обработчику в цепочке middleware
+			//обязательно передаем управление следующему обработчику в цепочке middleware
 			next.ServeHTTP(ww, r)
 		}
 
