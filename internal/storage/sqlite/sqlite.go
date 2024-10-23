@@ -26,8 +26,8 @@ func NewStorage(storagePath string) (*Storage, error) {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	// создаем таблицу, если ее еще нет
 	// TODO: можно прикрутить миграции, для тренировки
+	// создаем таблицу, если ее еще нет
 	stmt, err := db.Prepare(`
 --таблица статей
 	CREATE TABLE IF NOT EXISTS articles(
@@ -63,12 +63,11 @@ func NewStorage(storagePath string) (*Storage, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
 	_, err = stmt.Exec()
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-
-	//-------------------------
 
 	return &Storage{db: db}, nil
 }
@@ -125,7 +124,7 @@ func (s *Storage) GetData(id string) (string, error) {
 
 	//если строки не найдено - возвращаем пустую строку
 	if errors.Is(err, sql.ErrNoRows) {
-		return "", storage.ErrURLNotFound
+		return "", storage.ErrDataNotFound
 	}
 
 	if err != nil {

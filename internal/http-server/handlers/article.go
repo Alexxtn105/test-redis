@@ -43,7 +43,7 @@ func GetArticle(log *slog.Logger, dataGetter DataGetter) http.HandlerFunc {
 
 		// Находим статью в БД
 		resData, err := dataGetter.GetData(articleId)
-		if errors.Is(err, storage.ErrURLNotFound) {
+		if errors.Is(err, storage.ErrDataNotFound) {
 			// Не нашли, сообщаем об этом клиенту
 			log.Info("data not found", "article_id", articleId)
 			render.JSON(w, r, resp.Error("not found"))
@@ -59,7 +59,7 @@ func GetArticle(log *slog.Logger, dataGetter DataGetter) http.HandlerFunc {
 		log.Info("got data", slog.String("data", resData))
 
 		// Делаем редирект на найденный URL
-		http.Redirect(w, r, resData, http.StatusFound)
+		//http.Redirect(w, r, resData, http.StatusFound)
 
 		// В последней строчке делаем редирект со статусом http.StatusFound — код HTTP 302. Он обычно используется для временных перенаправлений, а не постоянных, за которые отвечает 301.
 		// Наш сервис может перенаправлять на разные URL в зависимости от ситуации
@@ -70,3 +70,10 @@ func GetArticle(log *slog.Logger, dataGetter DataGetter) http.HandlerFunc {
 		// Нам такое поведение не нужно.
 	}
 }
+
+//func responseOK(w http.ResponseWriter, r *http.Request, alias string) {
+//	render.JSON(w, r, Response{
+//		Response: resp.OK(),
+//		Alias:    alias,
+//	})
+//}

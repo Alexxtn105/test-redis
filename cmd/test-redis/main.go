@@ -54,7 +54,6 @@ func main() {
 		log.Error("failed to initialize storage", sl.Err(err))
 	} else {
 		log.Info("storage created")
-		//fmt.Println(storage)
 	}
 	//endregion
 
@@ -137,10 +136,11 @@ func main() {
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
-			log.Error("failed to start server")
+			if err.Error() != "http: Server closed" {
+				log.Error("failed to start server", slog.String("error", err.Error()))
+			}
 		}
 	}()
-
 	log.Info("server started")
 
 	// ждем, пока в канал не придет сигнал с остановкой сервера
@@ -148,12 +148,11 @@ func main() {
 	log.Info("stopping server")
 
 	// TODO: move timeout to config
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Error("failed to stop server", sl.Err(err))
-
 		return
 	}
 
