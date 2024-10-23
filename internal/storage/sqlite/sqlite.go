@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
+	"test-redis/internal/models"
 	"test-redis/internal/storage"
 )
 
@@ -54,12 +55,12 @@ func NewStorage(storagePath string) (*Storage, error) {
 
 	//Таблица комментариев-----------------------
 	stmt, err = db.Prepare(`
---таблица комментариев
+	--таблица комментариев
 	CREATE TABLE IF NOT EXISTS comments(
 		id INTEGER PRIMARY KEY,
 		text TEXT NOT NULL,
 		score INTEGER);
-`)
+	`)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -68,6 +69,56 @@ func NewStorage(storagePath string) (*Storage, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	////заполняем текстами
+	//articles := []struct {
+	//	title string
+	//	text  string
+	//}{
+	//	{"title 1", "article 1"},
+	//	{"title 2", "article 2"},
+	//	{"title 3", "article 3"},
+	//	{"title 4", "article 4"},
+	//	{"title 5", "article 5"},
+	//	{"title 6", "article 6"},
+	//	{"title 7", "article 7"},
+	//	{"title 8", "article 8"},
+	//}
+	//stmt, err = db.Prepare(`INSERT INTO articles (id, title, text) VALUES (?,?,?)`)
+	//if err != nil {
+	//	return nil, fmt.Errorf("%s: %w", op, err)
+	//}
+	//
+	//for id, article := range articles {
+	//	if _, err = stmt.Exec(id+1, article.title, article.text); err != nil {
+	//		return nil, fmt.Errorf("%s: %w", op, err)
+	//	}
+	//}
+	//
+	////заполняем комментариями
+	//comments := []struct {
+	//	text  string
+	//	score int64
+	//}{
+	//	{"comment 1", 50},
+	//	{"comment 2", 51},
+	//	{"comment 3", 52},
+	//	{"comment 4", 53},
+	//	{"comment 5", 54},
+	//	{"comment 6", 55},
+	//	{"comment 7", 56},
+	//	{"comment 8", 57},
+	//}
+	//stmt, err = db.Prepare(`INSERT INTO COMMENTS (id, text, score) VALUES (?,?,?)`)
+	//if err != nil {
+	//	return nil, fmt.Errorf("%s: %w", op, err)
+	//}
+	//
+	//for id, comment := range comments {
+	//	if _, err = stmt.Exec(id+1, comment.text, comment.score); err != nil {
+	//		return nil, fmt.Errorf("%s: %w", op, err)
+	//	}
+	//}
 
 	return &Storage{db: db}, nil
 }
@@ -107,7 +158,33 @@ func NewStorage(storagePath string) (*Storage, error) {
 //	return id, nil
 //}
 
-// GetData - получить ссылку по ее алиасу
+func (s *Storage) GetArticleData(id string) ([]models.ArticleInfo, error) {
+	const op = "storage.sqlite.GetArticleData"
+
+	// Подготавливаем запрос (проверка корректности синтаксиса)
+	stmt, err := s.db.Prepare("SELECT id, title, text, 0 FROM articles WHERE id IN (2,3)")
+	if err != nil {
+		return nil, fmt.Errorf("%s: prepare statement: %w", op, err)
+	}
+
+	var result []models.ArticleInfo
+
+	//в параметрах используем указатель, чтобы получить результаты
+	err = stmt.QueryRow(id).Scan(&result)
+
+	//если строки не найдено - возвращаем пустую строку
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, storage.ErrDataNotFound
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("%s: execute statement: %w", op, err)
+	}
+
+	return result, nil
+}
+
+// GetData - получить данные
 func (s *Storage) GetData(id string) (string, error) {
 	const op = "storage.sqlite.GetData"
 
