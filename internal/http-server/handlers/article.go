@@ -1,4 +1,6 @@
-package handlers
+//internal/http-server/handlers/article.go
+
+package article
 
 import (
 	"errors"
@@ -7,20 +9,22 @@ import (
 	"github.com/go-chi/render"
 	"log/slog"
 	"net/http"
+	resp "test-redis/internal/lib/api/response"
 	"test-redis/internal/lib/logger/sl"
 	"test-redis/internal/storage"
 )
 
-// URLGetter is an interface for getting url by alias.
+// DataGetter is an interface for getting data by Id.
 //
-//go:generate go run github.com/vektra/mockery/v2@v2.28.2 --name=URLGetter
-type URLGetter interface {
-	GetURL(alias string) (string, error)
+//go:generate go run github.com/vektra/mockery/v2@v2.28.2 --name=DataGetter
+type DataGetter interface {
+	GetData(id string) (string, error)
 }
 
-func GetArticle(log *slog.Logger, urlGetter URLGetter) http.HandlerFunc {
+// GetArticle Получить статью по ее ид
+func GetArticle(log *slog.Logger, dataGetter DataGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers.article.GteArticle"
+		const op = "handlers.article.GetArticle"
 
 		//пишем в лог
 		log = log.With(
@@ -28,41 +32,35 @@ func GetArticle(log *slog.Logger, urlGetter URLGetter) http.HandlerFunc {
 			slog.String("request_id", middleware.GetReqID(r.Context())),
 		)
 
-		// Роутер chi позволяет делать вот такие финты -
-		// получать GET-параметры по их именам.
-		// Имена определяются при добавлении хэндлера в роутер, это будет ниже.
-		article_id := chi.URLParam(r, "article_id")
-		if article_id == "" {
+		// Роутер chi позволяет делать вот такие финты - получать GET-параметры по их именам.
+		// Имена определяются при добавлении хэндлера в роутер.
+		articleId := chi.URLParam(r, "article_id")
+		if articleId == "" {
 			log.Info("article_id is empty")
-
 			render.JSON(w, r, resp.Error("not found"))
-
 			return
 		}
 
-		// Находим URL по алиасу в БД
-		resURL, err := urlGetter.GetURL(article_id)
+		// Находим статью в БД
+		resData, err := dataGetter.GetData(articleId)
 		if errors.Is(err, storage.ErrURLNotFound) {
-			// Не нашли URL, сообщаем об этом клиенту
-			log.Info("url not found", "article_id", article_id)
-
+			// Не нашли, сообщаем об этом клиенту
+			log.Info("data not found", "article_id", articleId)
 			render.JSON(w, r, resp.Error("not found"))
-
 			return
 		}
 		if err != nil {
 			// Не удалось осуществить поиск
-			log.Error("failed to get url", sl.Err(err))
-
+			log.Error("failed to get data", sl.Err(err))
 			render.JSON(w, r, resp.Error("internal error"))
-
 			return
 		}
 
-		log.Info("got url", slog.String("url", resURL))
+		log.Info("got data", slog.String("data", resData))
 
 		// Делаем редирект на найденный URL
-		http.Redirect(w, r, resURL, http.StatusFound)
+		http.Redirect(w, r, resData, http.StatusFound)
+
 		// В последней строчке делаем редирект со статусом http.StatusFound — код HTTP 302. Он обычно используется для временных перенаправлений, а не постоянных, за которые отвечает 301.
 		// Наш сервис может перенаправлять на разные URL в зависимости от ситуации
 		// (мы ведь можем удалить или изменить сохраненный URL),

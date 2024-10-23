@@ -4,7 +4,10 @@ package sqlite
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
+	_ "github.com/mattn/go-sqlite3"
+	"test-redis/internal/storage"
 )
 
 // Storage Структура объекта Storage
@@ -26,21 +29,46 @@ func NewStorage(storagePath string) (*Storage, error) {
 	// создаем таблицу, если ее еще нет
 	// TODO: можно прикрутить миграции, для тренировки
 	stmt, err := db.Prepare(`
-	CREATE TABLE IF NOT EXISTS url(
+--таблица статей
+	CREATE TABLE IF NOT EXISTS articles(
 		id INTEGER PRIMARY KEY,
-		alias TEXT NOT NULL UNIQUE,
-		url TEXT NOT NULL);
-	CREATE INDEX IF NOT EXISTS idx_alias ON url(alias);
-	`)
-
+		title TEXT NOT NULL UNIQUE,
+		text TEXT NOT NULL);
+	CREATE INDEX IF NOT EXISTS idx_theme ON articles(title);
+	CREATE TABLE IF NOT EXISTS comments(
+		id INTEGER PRIMARY KEY,
+		text TEXT NOT NULL,
+		score INTEGER);
+`)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	//обязательно закрываем, чтобы освободить ресурсы
+	defer stmt.Close()
 
 	_, err = stmt.Exec()
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	//Таблица комментариев-----------------------
+	stmt, err = db.Prepare(`
+--таблица комментариев
+	CREATE TABLE IF NOT EXISTS comments(
+		id INTEGER PRIMARY KEY,
+		text TEXT NOT NULL,
+		score INTEGER);
+`)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	_, err = stmt.Exec()
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	//-------------------------
 
 	return &Storage{db: db}, nil
 }
@@ -80,31 +108,32 @@ func NewStorage(storagePath string) (*Storage, error) {
 //	return id, nil
 //}
 
-// GetURL - получить ссылку по ее алиасу
-//func (s *Storage) GetURL(alias string) (string, error) {
-//	const op = "storage.sqlite.GetURL"
-//
-//	// Подготавливаем запрос (проверка корректности синтаксиса)
-//	stmt, err := s.db.Prepare("SELECT url FROM url WHERe alias = ?")
-//	if err != nil {
-//		return "", fmt.Errorf("%s: prepare statement: %w", op, err)
-//	}
-//
-//	var resURL string
-//
-//	err = stmt.QueryRow(alias).Scan(&resURL) //в параметрах используем указатель, чтобы получить результаты
-//
-//	//если строки не найдено - возвращаем пустую строку
-//	if errors.Is(err, sql.ErrNoRows) {
-//		return "", storage.ErrURLNotFound
-//	}
-//
-//	if err != nil {
-//		return "", fmt.Errorf("%s: execute statement: %w", op, err)
-//	}
-//
-//	return resURL, nil
-//}
+// GetData - получить ссылку по ее алиасу
+func (s *Storage) GetData(id string) (string, error) {
+	const op = "storage.sqlite.GetData"
+
+	// Подготавливаем запрос (проверка корректности синтаксиса)
+	stmt, err := s.db.Prepare("SELECT text FROM articles WHERE id = ?")
+	if err != nil {
+		return "", fmt.Errorf("%s: prepare statement: %w", op, err)
+	}
+
+	var result string
+
+	//в параметрах используем указатель, чтобы получить результаты
+	err = stmt.QueryRow(id).Scan(&result)
+
+	//если строки не найдено - возвращаем пустую строку
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", storage.ErrURLNotFound
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("%s: execute statement: %w", op, err)
+	}
+
+	return result, nil
+}
 
 // DeleteURL Удалить запись из БД по алиасу
 //func (s *Storage) DeleteURL(alias string) error {

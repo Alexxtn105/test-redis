@@ -17,6 +17,8 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	mwLogger "test-redis/internal/http-server/middleware/logger"
+
+	"test-redis/internal/http-server/handlers"
 )
 
 const (
@@ -50,10 +52,10 @@ func main() {
 	storage, err := sqlite.NewStorage(cfg.StoragePath)
 	if err != nil {
 		log.Error("failed to initialize storage", sl.Err(err))
+	} else {
+		log.Info("storage created")
+		//fmt.Println(storage)
 	}
-
-	log.Info("storage created")
-	fmt.Println(storage)
 	//endregion
 
 	//region Создаем http-сервер
@@ -104,8 +106,8 @@ func main() {
 	})
 	log.Debug("Auth info", cfg.User, cfg.Password)
 
-	router.Get("/article/{article_id}", handlerArticles)
-	router.Get("/trending", handlerArticles)
+	router.Get("/article/{article_id}", article.GetArticle(log, storage))
+	//router.Get("/trending", handlerArticles)
 
 	//// Подключаем редирект-хендлер.
 	//// Здесь формируем путь для обращения и именуем его параметр — {alias}.
@@ -186,12 +188,12 @@ func setupLogger(env string) *slog.Logger {
 	return log
 }
 
-func handlerArticles(writer http.ResponseWriter, _ *http.Request) {
-	fmt.Println("Hello articles!")
-	writer.Write([]byte("Hi articles!"))
-}
-
-func handlerTrending(writer http.ResponseWriter, _ *http.Request) {
-	fmt.Println("Hello Trending!")
-	writer.Write([]byte("Hi Trending!"))
-}
+//func handlerArticles(writer http.ResponseWriter, _ *http.Request) {
+//	fmt.Println("Hello articles!")
+//	writer.Write([]byte("Hi articles!"))
+//}
+//
+//func handlerTrending(writer http.ResponseWriter, _ *http.Request) {
+//	fmt.Println("Hello Trending!")
+//	writer.Write([]byte("Hi Trending!"))
+//}
