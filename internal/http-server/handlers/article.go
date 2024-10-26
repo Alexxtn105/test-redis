@@ -32,7 +32,7 @@ type DataGetter interface {
 // GetArticles Получить статьи по их ид
 func GetArticles(log *slog.Logger, dataGetter DataGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers.article.GetArticle"
+		const op = "handlers.article.GetArticles"
 
 		//пишем в лог
 		log = log.With(
@@ -40,7 +40,7 @@ func GetArticles(log *slog.Logger, dataGetter DataGetter) http.HandlerFunc {
 			slog.String("request_id", middleware.GetReqID(r.Context())),
 		)
 
-		articleId := "0"
+		articleId := "1"
 
 		// Находим статью в БД
 		resData, err := dataGetter.GetArticleData(articleId)
