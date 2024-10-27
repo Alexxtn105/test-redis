@@ -3,15 +3,36 @@
 package sqlite
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/redis/go-redis/v9"
 	"math/rand"
 	"test-redis/internal/models"
 	"test-redis/internal/storage"
 )
+
+var ctx = context.Background()
+
+// getCachedArticle Получение данных из кеша Redis
+func getCachedArticle(id int) ([]models.ArticleInfo, error) {
+
+	client := redis.NewClient(&redis.Options{
+		Addr:     ":6379",
+		Password: "",
+		DB:       0,
+	})
+	err := client.Set(ctx, "key", "value", 0).Err()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(client)
+
+	return nil, nil
+}
 
 // Storage Структура объекта Storage
 type Storage struct {
@@ -382,8 +403,6 @@ func (s *Storage) getMaxArticleId() (int, error) {
 func (s *Storage) GetRandomData() ([]models.ArticleInfo, error) {
 	const op = "storage.sqlite.GetRandomData"
 
-	var result []models.ArticleInfo
-
 	//берем случайное число в диапазоне от минимального до максимального ид статьи
 	min, err := s.getMinArticleId()
 	if err != nil {
@@ -402,11 +421,15 @@ func (s *Storage) GetRandomData() ([]models.ArticleInfo, error) {
 	}
 
 	isFound := false
+	var result []models.ArticleInfo
+
+	// TODO сперва поищем в кеше redis
+	myResult, err := getCachedArticle(v)
+	fmt.Println(myResult)
+
 	counter := 0
 	for !isFound || counter > 100 {
 		if err := s.db.Select(&result, "SELECT id, title, text, (SELECT AVG(score) FROM comments WHERE score IS NOT NULL AND article_id= $1) as rating FROM articles WHERE id= $1", v); err != nil {
-			//log.Fatal(err)
-
 			return nil, fmt.Errorf("%s: prepare statement: %w", op, err)
 		}
 

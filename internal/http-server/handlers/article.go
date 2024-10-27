@@ -36,6 +36,8 @@ func GetRandArticles(log *slog.Logger, dataGetter DataGetter) http.HandlerFunc {
 			slog.String("request_id", middleware.GetReqID(r.Context())),
 		)
 
+		//var resData []models.ArticleInfo
+
 		// Находим статью в БД
 		resData, err := dataGetter.GetRandomData()
 		if errors.Is(err, storage.ErrDataNotFound) {
@@ -124,6 +126,7 @@ func GetArticle(log *slog.Logger, dataGetter DataGetter) http.HandlerFunc {
 	}
 }
 
+// GetTestData Получение тестовых данных с сайта https://jsonplaceholder.typicode.com
 func GetTestData(log *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		url := "https://jsonplaceholder.typicode.com/users"
