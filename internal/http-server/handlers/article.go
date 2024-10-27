@@ -8,10 +8,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
+	"io/ioutil"
 	"log/slog"
-	"math/rand"
 	"net/http"
-	"strconv"
 	resp "test-redis/internal/lib/api/response"
 	"test-redis/internal/lib/logger/sl"
 	"test-redis/internal/models"
@@ -23,11 +22,8 @@ import (
 //go:generate go run github.com/vektra/mockery/v2@v2.28.2 --name=DataGetter
 type DataGetter interface {
 	GetData(id string) (string, error)
-	GetRandomArticle() ([]models.ArticleInfo, error)
+	GetRandomData() ([]models.ArticleInfo, error)
 }
-
-//type DataStructGetter interface {
-//}
 
 // GetRandArticles Получить статьи по их ид
 func GetRandArticles(log *slog.Logger, dataGetter DataGetter) http.HandlerFunc {
@@ -41,7 +37,7 @@ func GetRandArticles(log *slog.Logger, dataGetter DataGetter) http.HandlerFunc {
 		)
 
 		// Находим статью в БД
-		resData, err := dataGetter.GetRandomArticle()
+		resData, err := dataGetter.GetRandomData()
 		if errors.Is(err, storage.ErrDataNotFound) {
 			// Не нашли, сообщаем об этом клиенту
 			log.Info("data not found")
@@ -128,57 +124,32 @@ func GetArticle(log *slog.Logger, dataGetter DataGetter) http.HandlerFunc {
 	}
 }
 
-func GetTrending(log *slog.Logger, dataGetter DataGetter) http.HandlerFunc {
+func GetTestData(log *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers.article.GetTrending"
+		url := "https://jsonplaceholder.typicode.com/users"
+		method := "GET"
 
-		//пишем в лог
-		log = log.With(
-			slog.String("op", op),
-			slog.String("request_id", middleware.GetReqID(r.Context())),
-		)
+		client := &http.Client{}
+		req, err := http.NewRequest(method, url, nil)
 
-		// Роутер chi позволяет делать вот такие финты - получать GET-параметры по их именам.
-		// Имена определяются при добавлении хэндлера в роутер.
-		//articleId := chi.URLParam(r, "article_id")
-		//if articleId == "" {
-		//	log.Info("article_id is empty")
-		//	render.JSON(w, r, resp.Error("not found"))
-		//	return
-		//}
-
-		//берем случайный ид статьи
-		articleId := strconv.Itoa(rand.Int())
-		log.Info("random articleId", "articleId", articleId)
-
-		// Находим статью в БД
-		resData, err := dataGetter.GetData(articleId)
-		if errors.Is(err, storage.ErrDataNotFound) {
-			// Не нашли, сообщаем об этом клиенту
-			log.Info("data not found", "article_id", articleId)
-			render.JSON(w, r, resp.Error("not found"))
-			return
-		}
 		if err != nil {
-			// Не удалось осуществить поиск
-			log.Error("failed to get data", sl.Err(err))
-			render.JSON(w, r, resp.Error("internal error"))
+			log.Error("failed to create request", sl.Err(err))
 			return
 		}
+		res, err := client.Do(req)
+		if err != nil {
+			log.Error("failed to get data", sl.Err(err))
+			return
+		}
+		defer res.Body.Close()
 
-		log.Info("got data", slog.String("data", resData))
-
-		w.Write([]byte("trending"))
-		// Делаем редирект на найденный URL
-		//http.Redirect(w, r, resData, http.StatusFound)
-
-		// В последней строчке делаем редирект со статусом http.StatusFound — код HTTP 302. Он обычно используется для временных перенаправлений, а не постоянных, за которые отвечает 301.
-		// Наш сервис может перенаправлять на разные URL в зависимости от ситуации
-		// (мы ведь можем удалить или изменить сохраненный URL),
-		// поэтому есть смысл использовать именно http.StatusFound.
-		// Это важно для систем кэширования и поисковых машин —
-		// они обычно кэшируют редиректы с кодом 301, то есть считают их постоянными.
-		// Нам такое поведение не нужно.
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			log.Error("failed to read data", sl.Err(err))
+			//fmt.Println(err)
+			return
+		}
+		w.Write(body)
 	}
 }
 

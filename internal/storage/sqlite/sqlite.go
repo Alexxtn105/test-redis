@@ -81,6 +81,7 @@ func NewStorage(storagePath string) (*Storage, error) {
 	//// tx.NamedExec("INSERT INTO user (first_name, last_name, email) VALUES (:first_name, :last_name, :email)", &User{FirstName: "Jane", LastName: "Citizen", Email: "jane.citzen@example.com"})
 	//tx.Commit()
 
+	//region Заполнение данными
 	tx2 := db.MustBegin()
 	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 1, "Comment 1-1", 2)
 	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 1, "Comment 1-2", 2)
@@ -134,6 +135,8 @@ func NewStorage(storagePath string) (*Storage, error) {
 	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 7, "Comment7-7", 9)
 	tx2.Commit()
 
+	//endregion
+
 	//// Тестовый запрос в базу данных, результаты сохраним в слайс []models.ArticleInfo
 	//var articles []models.ArticleInfo
 	//db.Select(&articles, "SELECT * FROM articles ORDER BY title ASC")
@@ -144,37 +147,33 @@ func NewStorage(storagePath string) (*Storage, error) {
 	return &Storage{db: db}, nil
 }
 
-func (s *Storage) getMaxArticleId() (int, error) {
-	const op = "storage.sqlite.GetArticleCount"
+// getMinArticleId Получить минимальный ИД из таблицы статей
+func (s *Storage) getMinArticleId() (int, error) {
+	const op = "storage.sqlite.getMinArticleId"
 
 	var cnt []int
-
-	if err := s.db.Select(&cnt, "SELECT MAX(id) FROM articles"); err != nil {
-		return 0, fmt.Errorf("%s: prepare statement: %w", op, err)
-
+	if err := s.db.Select(&cnt, "SELECT MIN(id) FROM articles"); err != nil {
+		return 0, fmt.Errorf("%s: select query: %w", op, err)
 	}
 	if len(cnt) == 0 {
 		return 0, nil
 	}
-	return cnt[0], nil
 
+	return cnt[0], nil
 }
 
-func (s *Storage) getMinArticleId() (int, error) {
-	const op = "storage.sqlite.GetArticleCount"
+// getMaxArticleId Получить максимальный ИД из таблицы статей
+func (s *Storage) getMaxArticleId() (int, error) {
+	const op = "storage.sqlite.getMaxArticleId"
 
 	var cnt []int
-
-	if err := s.db.Select(&cnt, "SELECT MIN(id) FROM articles"); err != nil {
-		return 0, fmt.Errorf("%s: prepare statement: %w", op, err)
-
+	if err := s.db.Select(&cnt, "SELECT MAX(id) FROM articles"); err != nil {
+		return 0, fmt.Errorf("%s: select query: %w", op, err)
 	}
 	if len(cnt) == 0 {
 		return 0, nil
 	}
-
 	return cnt[0], nil
-
 }
 
 //func NewStorage_OLD(storagePath string) (*Storage, error) {
@@ -379,12 +378,13 @@ func (s *Storage) getMinArticleId() (int, error) {
 //	return err
 //}
 
-func (s *Storage) GetRandomArticle() ([]models.ArticleInfo, error) {
-	const op = "storage.sqlite.GetRandomArticle"
+// GetRandomData Получить случайную статью из таблицы
+func (s *Storage) GetRandomData() ([]models.ArticleInfo, error) {
+	const op = "storage.sqlite.GetRandomData"
 
 	var result []models.ArticleInfo
 
-	//берем случайное число
+	//берем случайное число в диапазоне от минимального до максимального ид статьи
 	min, err := s.getMinArticleId()
 	if err != nil {
 		return nil, fmt.Errorf("%s: get min article: %w", op, err)
@@ -394,14 +394,32 @@ func (s *Storage) GetRandomArticle() ([]models.ArticleInfo, error) {
 		return nil, fmt.Errorf("%s: get max article: %w", op, err)
 	}
 
+	//собственно случайное значение
 	v := rand.Intn(max-min) + min // range is min to max
 
-	if err := s.db.Select(&result, "SELECT id, title, text, (SELECT AVG(score) FROM comments WHERE score IS NOT NULL AND article_id= $1) as rating FROM articles WHERE id= $1", v); err != nil {
-		//log.Fatal(err)
-		return nil, fmt.Errorf("%s: prepare statement: %w", op, err)
+	if v <= 0 {
+		return nil, fmt.Errorf("%s: there is no data to display (min==max)", op)
 	}
 
-	fmt.Printf("%+v\n", result)
+	isFound := false
+	counter := 0
+	for !isFound || counter > 100 {
+		if err := s.db.Select(&result, "SELECT id, title, text, (SELECT AVG(score) FROM comments WHERE score IS NOT NULL AND article_id= $1) as rating FROM articles WHERE id= $1", v); err != nil {
+			//log.Fatal(err)
+
+			return nil, fmt.Errorf("%s: prepare statement: %w", op, err)
+		}
+
+		//если ничего не найдено, инкрементим ид, и так 100 раз, потом выходим
+		if len(result) > 0 {
+			isFound = true
+		} else {
+			counter++
+			v++
+		}
+	}
+
+	//fmt.Printf("%+v\n", result)
 
 	return result, nil
 }

@@ -19,3 +19,7 @@ go test ./tests -count=1 -v
 ```bash
 git tag v0.0.1 && git push origin v0.0.1
 ```
+
+
+Страница для тестирования API
+https://jsonplaceholder.typicode.com/users

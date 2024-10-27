@@ -107,8 +107,7 @@ func main() {
 
 	router.Get("/article/{article_id}", article.GetArticle(log, storage))
 	router.Get("/articles", article.GetRandArticles(log, storage))
-	router.Get("/trending", article.GetTrending(log, storage))
-	//router.Get("/trending", handlerArticles)
+	router.Get("/test", article.GetTestData(log))
 
 	//// Подключаем редирект-хендлер.
 	//// Здесь формируем путь для обращения и именуем его параметр — {alias}.
