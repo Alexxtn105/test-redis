@@ -23,14 +23,14 @@ import (
 //go:generate go run github.com/vektra/mockery/v2@v2.28.2 --name=DataGetter
 type DataGetter interface {
 	GetData(id string) (string, error)
-	GetArticleData(id string) ([]models.ArticleInfo, error)
+	GetRandomArticle() ([]models.ArticleInfo, error)
 }
 
 //type DataStructGetter interface {
 //}
 
-// GetArticles Получить статьи по их ид
-func GetArticles(log *slog.Logger, dataGetter DataGetter) http.HandlerFunc {
+// GetRandArticles Получить статьи по их ид
+func GetRandArticles(log *slog.Logger, dataGetter DataGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.article.GetArticles"
 
@@ -40,13 +40,11 @@ func GetArticles(log *slog.Logger, dataGetter DataGetter) http.HandlerFunc {
 			slog.String("request_id", middleware.GetReqID(r.Context())),
 		)
 
-		articleId := "1"
-
 		// Находим статью в БД
-		resData, err := dataGetter.GetArticleData(articleId)
+		resData, err := dataGetter.GetRandomArticle()
 		if errors.Is(err, storage.ErrDataNotFound) {
 			// Не нашли, сообщаем об этом клиенту
-			log.Info("data not found", "article_id", articleId)
+			log.Info("data not found")
 			render.JSON(w, r, resp.Error("not found"))
 			return
 		}

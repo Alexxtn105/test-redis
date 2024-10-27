@@ -106,7 +106,7 @@ func main() {
 	log.Debug("Auth info", cfg.User, cfg.Password)
 
 	router.Get("/article/{article_id}", article.GetArticle(log, storage))
-	router.Get("/articles", article.GetArticles(log, storage))
+	router.Get("/articles", article.GetRandArticles(log, storage))
 	router.Get("/trending", article.GetTrending(log, storage))
 	//router.Get("/trending", handlerArticles)
 

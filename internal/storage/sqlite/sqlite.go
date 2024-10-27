@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
-	"log"
+	"math/rand"
 	"test-redis/internal/models"
 	"test-redis/internal/storage"
 )
@@ -21,6 +21,7 @@ type Storage struct {
 
 var schemaArticles = `
 	--таблица статей
+	--DROP TABLE articles;
 	CREATE TABLE IF NOT EXISTS articles(
 		id INTEGER PRIMARY KEY,
 		title TEXT NOT NULL UNIQUE,
@@ -30,11 +31,20 @@ var schemaArticles = `
 
 var schemaComments = `
 	--таблица комментариев
+	DROP TABLE comments;
 	CREATE TABLE IF NOT EXISTS comments(
 		id INTEGER PRIMARY KEY,
+		article_id INTEGER NOT NULL,
 		text TEXT NOT NULL,
-		score INTEGER);
+		score REAL);
 `
+
+type ArticleInfo struct {
+	Id     int64   `db:"id" json:"id"`
+	Title  string  `db:"title" json:"title"`
+	Text   string  `db:"text" json:"text"`
+	Rating float64 `db:"rating" json:"rating"`
+}
 
 // NewStorage Конструктор объекта Storage
 func NewStorage(storagePath string) (*Storage, error) {
@@ -45,7 +55,7 @@ func NewStorage(storagePath string) (*Storage, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	} else {
-		fmt.Println("db connected")
+		//fmt.Println("db connected")
 	}
 
 	// TODO: можно прикрутить миграции, для тренировки
@@ -71,6 +81,59 @@ func NewStorage(storagePath string) (*Storage, error) {
 	//// tx.NamedExec("INSERT INTO user (first_name, last_name, email) VALUES (:first_name, :last_name, :email)", &User{FirstName: "Jane", LastName: "Citizen", Email: "jane.citzen@example.com"})
 	//tx.Commit()
 
+	tx2 := db.MustBegin()
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 1, "Comment 1-1", 2)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 1, "Comment 1-2", 2)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 1, "Comment 1-3", 2)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 1, "Comment 1-4", 3)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 1, "Comment 1-5", 3)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 1, "Comment 1-6", 3)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 1, "Comment 1-7", 3)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 1, "Comment 1-7", 4)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 2, "Comment2-1", 3)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 2, "Comment2-2", 3)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 2, "Comment2-3", 3)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 2, "Comment2-4", 4)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 2, "Comment2-5", 4)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 2, "Comment2-6", 4)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 2, "Comment2-7", 4)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 3, "Comment3-1", 4)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 3, "Comment3-2", 4)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 3, "Comment3-3", 4)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 3, "Comment3-4", 4)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 3, "Comment3-5", 5)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 3, "Comment3-6", 5)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 3, "Comment3-7", 5)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 4, "Comment4-1", 6)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 4, "Comment4-2", 6)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 4, "Comment4-3", 6)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 4, "Comment4-4", 7)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 4, "Comment4-5", 7)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 4, "Comment4-6", 7)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 4, "Comment4-7", 7)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 5, "Comment5-1", 7)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 5, "Comment5-2", 7)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 5, "Comment5-3", 7)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 5, "Comment5-4", 8)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 5, "Comment5-5", 8)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 5, "Comment5-6", 8)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 5, "Comment5-7", 8)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 6, "Comment6-1", 7)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 6, "Comment6-2", 5)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 6, "Comment6-3", 5)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 6, "Comment6-4", 8)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 6, "Comment6-5", 8)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 6, "Comment6-6", 8)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 6, "Comment6-7", 8)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 7, "Comment7-1", 9)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 7, "Comment7-2", 5)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 7, "Comment7-3", 5)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 7, "Comment7-4", 8)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 7, "Comment7-5", 8)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 7, "Comment7-6", 9)
+	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 7, "Comment7-7", 9)
+	tx2.Commit()
+
 	//// Тестовый запрос в базу данных, результаты сохраним в слайс []models.ArticleInfo
 	//var articles []models.ArticleInfo
 	//db.Select(&articles, "SELECT * FROM articles ORDER BY title ASC")
@@ -79,6 +142,39 @@ func NewStorage(storagePath string) (*Storage, error) {
 	//fmt.Printf("Article 1: %#v\nArticle 2: %#v\n", article1, article2)
 
 	return &Storage{db: db}, nil
+}
+
+func (s *Storage) getMaxArticleId() (int, error) {
+	const op = "storage.sqlite.GetArticleCount"
+
+	var cnt []int
+
+	if err := s.db.Select(&cnt, "SELECT MAX(id) FROM articles"); err != nil {
+		return 0, fmt.Errorf("%s: prepare statement: %w", op, err)
+
+	}
+	if len(cnt) == 0 {
+		return 0, nil
+	}
+	return cnt[0], nil
+
+}
+
+func (s *Storage) getMinArticleId() (int, error) {
+	const op = "storage.sqlite.GetArticleCount"
+
+	var cnt []int
+
+	if err := s.db.Select(&cnt, "SELECT MIN(id) FROM articles"); err != nil {
+		return 0, fmt.Errorf("%s: prepare statement: %w", op, err)
+
+	}
+	if len(cnt) == 0 {
+		return 0, nil
+	}
+
+	return cnt[0], nil
+
 }
 
 //func NewStorage_OLD(storagePath string) (*Storage, error) {
@@ -283,13 +379,26 @@ func NewStorage(storagePath string) (*Storage, error) {
 //	return err
 //}
 
-func (s *Storage) GetArticleData(id string) ([]models.ArticleInfo, error) {
-	const op = "storage.sqlite.GetArticleData"
+func (s *Storage) GetRandomArticle() ([]models.ArticleInfo, error) {
+	const op = "storage.sqlite.GetRandomArticle"
 
 	var result []models.ArticleInfo
 
-	if err := s.db.Select(&result, "SELECT id, title, text, 0 as rating FROM articles"); err != nil {
-		log.Fatal(err)
+	//берем случайное число
+	min, err := s.getMinArticleId()
+	if err != nil {
+		return nil, fmt.Errorf("%s: get min article: %w", op, err)
+	}
+	max, err := s.getMaxArticleId()
+	if err != nil {
+		return nil, fmt.Errorf("%s: get max article: %w", op, err)
+	}
+
+	v := rand.Intn(max-min) + min // range is min to max
+
+	if err := s.db.Select(&result, "SELECT id, title, text, (SELECT AVG(score) FROM comments WHERE score IS NOT NULL AND article_id= $1) as rating FROM articles WHERE id= $1", v); err != nil {
+		//log.Fatal(err)
+		return nil, fmt.Errorf("%s: prepare statement: %w", op, err)
 	}
 
 	fmt.Printf("%+v\n", result)
