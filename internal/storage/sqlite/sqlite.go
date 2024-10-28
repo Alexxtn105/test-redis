@@ -3,49 +3,21 @@
 package sqlite
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/redis/go-redis/v9"
 	"math/rand"
+	"test-redis/internal/cache/redisCache"
 	"test-redis/internal/models"
 	"test-redis/internal/storage"
 )
-
-var ctx = context.Background()
-
-// getCachedArticle Получение данных из кеша Redis
-func getCachedArticle(id int) ([]models.ArticleInfo, error) {
-
-	client := redis.NewClient(&redis.Options{
-		Addr:     ":6379",
-		Password: "",
-		DB:       0,
-	})
-	err := client.Set(ctx, "key", "value", 0).Err()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(client)
-
-	return nil, nil
-}
 
 // Storage Структура объекта Storage
 type Storage struct {
 	//	db *sql.DB //из пакета "database/sql"
 	db *sqlx.DB //из пакета "database/sql"
-}
-
-// ArticleInfo Структура инфо о статье
-type ArticleInfo struct {
-	Id     int64   `db:"id" json:"id"`
-	Title  string  `db:"title" json:"title"`
-	Text   string  `db:"text" json:"text"`
-	Rating float64 `db:"rating" json:"rating"`
 }
 
 // NewStorage Конструктор объекта Storage
@@ -224,7 +196,7 @@ func (s *Storage) GetRandomData() ([]models.ArticleInfo, error) {
 	var result []models.ArticleInfo
 
 	// TODO сперва поищем в кеше redis
-	myResult, err := getCachedArticle(v)
+	myResult, err := redisCache.GetCachedArticle(v)
 	fmt.Println(myResult)
 
 	counter := 0

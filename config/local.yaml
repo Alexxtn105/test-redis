@@ -3,6 +3,10 @@
 env: "local"  # окружение - local, dev, или prod
 storage_path: "./storage/storage.db"
 app_secret: "test-secret"
+cache:
+  address: "localhost:6379"
+  password: ""
+  db: "0"
 http_server: # конфигурация нашего http-сервера
   address: "localhost:8500"
   timeout: 4s

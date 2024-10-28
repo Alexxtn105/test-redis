@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"test-redis/internal/cache/redisCache"
 	"test-redis/internal/config"
 	"test-redis/internal/lib/logger/sl"
 	"test-redis/internal/storage/sqlite"
@@ -43,8 +44,8 @@ func main() {
 	//region Создаем логгер
 	log := setupLogger(cfg.Env)
 	//добавим параметр env с помощью метода log.With
-	log = log.With(slog.String("env", cfg.Env))                          // к каждому сообщению будет добавляться поле с информацией о текущем окружении
-	log.Info("initializing server", slog.String("address", cfg.Address)) // Помимо сообщения выведем параметр с адресом
+	log = log.With(slog.String("env", cfg.Env))                                     // к каждому сообщению будет добавляться поле с информацией о текущем окружении
+	log.Info("initializing server", slog.String("address", cfg.HTTPServer.Address)) // Помимо сообщения выведем параметр с адресом
 	log.Debug("logger debug mode enabled")
 	//endregion
 
@@ -54,6 +55,16 @@ func main() {
 		log.Error("failed to initialize storage", sl.Err(err))
 	} else {
 		log.Info("storage created")
+	}
+	//endregion
+
+	//region Создаем объект кэша Redis
+	log.Info("initializing cache", slog.String("address", cfg.Cache.Address)) // Помимо сообщения выведем параметр с адресом
+	cache, err := redisCache.NewCache(cfg.Cache.Address, cfg.Cache.Password, cfg.Cache.DB)
+	if err != nil {
+		log.Error("failed to initialize cache", sl.Err(err))
+	} else {
+		log.Info("cache created: ", cache)
 	}
 	//endregion
 
@@ -86,7 +97,6 @@ func main() {
 	router.Use(middleware.Recoverer) // Если где-то внутри сервера (обработчика запроса) произойдет паника, приложение не должно упасть
 	router.Use(middleware.URLFormat) // Парсер URLов поступающих запросов
 
-	// РАЗОБРАТЬСЯ!!!!
 	//--------------------------------------------------------------------------------
 	//router.Post("/", save.New(log, storage))
 
@@ -96,39 +106,32 @@ func main() {
 		r.Use(middleware.BasicAuth("url-shortener", map[string]string{
 			// Передаем в middleware креды
 			cfg.HTTPServer.User: cfg.HTTPServer.Password,
-			// Если у вас более одного пользователя,
-			// то можете добавить остальные пары по аналогии.
+			// Если у вас более одного пользователя, можно добавить остальные пары по аналогии.
 		}))
 
 		//	r.Post("/", save.New(log, storage))
 		//r.Post("/", save.New(log, storage))
 	})
-	log.Debug("Auth info", cfg.User, cfg.Password)
+	log.Debug("Auth info", cfg.HTTPServer.User, cfg.HTTPServer.Password)
+
+	// Прописываем маршруты с параметром {article_id}.
+	// В хендлере можно получить этот параметр по указанному имени
+	// Это очень удобная и гибкая штука. Можно формировать и более сложные пути, например:
+	// router.Get("/v1/{user_id}/uid", redirect.New(log, storage))
 
 	router.Get("/article/{article_id}", article.GetArticle(log, storage))
 	router.Get("/articles", article.GetRandArticles(log, storage))
 	router.Get("/test", article.GetTestData(log))
-
-	//// Подключаем редирект-хендлер.
-	//// Здесь формируем путь для обращения и именуем его параметр — {alias}.
-	//// В хендлере можно получить этот параметр по указанному имени
-	//// Это очень удобная и гибкая штука. Вы можете формировать и более сложные пути, например:
-	//// router.Get("/v1/{user_id}/uid", redirect.New(log, storage))
-	//router.Get("/{alias}", redirect.New(log, storage))
-	//
-	////прикручиваем ремувер
-	//router.Delete("/{alias}", remove.New(log, storage))
-
 	//endregion
 
 	//region ЗАПУСК и ОСТАНОВКА СЕРВЕРА
-	log.Info("starting server", slog.String("address", cfg.Address))
+	log.Info("starting server", slog.String("address", cfg.HTTPServer.Address))
 
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	srv := &http.Server{
-		Addr:         cfg.Address,
+		Addr:         cfg.HTTPServer.Address,
 		Handler:      router,
 		ReadTimeout:  cfg.HTTPServer.Timeout,
 		WriteTimeout: cfg.HTTPServer.Timeout,
