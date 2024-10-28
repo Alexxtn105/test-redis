@@ -8,10 +8,11 @@ import (
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
-	"math/rand"
+	"strconv"
 	"test-redis/internal/cache/redisCache"
 	"test-redis/internal/models"
 	"test-redis/internal/storage"
+	"time"
 )
 
 // Storage Структура объекта Storage
@@ -177,17 +178,18 @@ func (s *Storage) GetRandomData() ([]models.ArticleInfo, error) {
 	const op = "storage.sqlite.GetRandomData"
 
 	//берем случайное число в диапазоне от минимального до максимального ид статьи
-	min, err := s.getMinArticleId()
-	if err != nil {
-		return nil, fmt.Errorf("%s: get min article: %w", op, err)
-	}
-	max, err := s.getMaxArticleId()
-	if err != nil {
-		return nil, fmt.Errorf("%s: get max article: %w", op, err)
-	}
+	//min, err := s.getMinArticleId()
+	//if err != nil {
+	//	return nil, fmt.Errorf("%s: get min article: %w", op, err)
+	//}
+	//max, err := s.getMaxArticleId()
+	//if err != nil {
+	//	return nil, fmt.Errorf("%s: get max article: %w", op, err)
+	//}
 
 	//собственно случайное значение
-	v := rand.Intn(max-min) + min // range is min to max
+	//	v := rand.Intn(max-min) + min // range is min to max
+	v := 2
 
 	if v <= 0 {
 		return nil, fmt.Errorf("%s: there is no data to display (min==max)", op)
@@ -197,7 +199,14 @@ func (s *Storage) GetRandomData() ([]models.ArticleInfo, error) {
 	var result []models.ArticleInfo
 
 	// TODO сперва поищем в кеше redis
-	myResult, err := s.cache.GetCachedArticle("")
+	//	myResult, err := s.cache.GetCachedArticle("")
+	myResult, err := s.cache.GetCachedArticleAsString(strconv.Itoa(v))
+	if err != nil {
+		//return nil, err
+		fmt.Println(time.Now(), err)
+	} else {
+		fmt.Println("cache found")
+	}
 	fmt.Println(myResult)
 
 	counter := 0
@@ -206,7 +215,7 @@ func (s *Storage) GetRandomData() ([]models.ArticleInfo, error) {
 			return nil, fmt.Errorf("%s: prepare statement: %w", op, err)
 		}
 
-		//если ничего не найдено, инкрементим ид, и так 100 раз, потом выходим
+		//если ничего не найдено, увеличиваем ид, и так 100 раз, потом выходим
 		if len(result) > 0 {
 			isFound = true
 		} else {
@@ -216,6 +225,11 @@ func (s *Storage) GetRandomData() ([]models.ArticleInfo, error) {
 	}
 
 	//fmt.Printf("%+v\n", result)
+	// Пишем найденное в кэш
+	if myResult == "" {
+		fmt.Println("set value to cache")
+		s.cache.SetCachedArticle(strconv.Itoa(v), result)
+	}
 
 	return result, nil
 }
