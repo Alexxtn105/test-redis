@@ -17,11 +17,12 @@ import (
 // Storage Структура объекта Storage
 type Storage struct {
 	//	db *sql.DB //из пакета "database/sql"
-	db *sqlx.DB //из пакета "database/sql"
+	db    *sqlx.DB //из пакета "database/sql"
+	cache *redisCache.Cache
 }
 
 // NewStorage Конструктор объекта Storage
-func NewStorage(storagePath string) (*Storage, error) {
+func NewStorage(storagePath string, cache *redisCache.Cache) (*Storage, error) {
 	const op = "storage.sqlite.NewStorage" // Имя текущей функции для логов и ошибок
 
 	// Подключаемся к БД (сделал с использованием sqlx - https://github.com/joncrlsn/go-examples/blob/master/sqlx-sqlite.go)
@@ -139,7 +140,7 @@ func NewStorage(storagePath string) (*Storage, error) {
 	//article1, article2 := articles[0], articles[1]
 	//fmt.Printf("Article 1: %#v\nArticle 2: %#v\n", article1, article2)
 
-	return &Storage{db: db}, nil
+	return &Storage{db: db, cache: cache}, nil
 }
 
 // getMinArticleId Получить минимальный ИД из таблицы статей
@@ -196,7 +197,7 @@ func (s *Storage) GetRandomData() ([]models.ArticleInfo, error) {
 	var result []models.ArticleInfo
 
 	// TODO сперва поищем в кеше redis
-	myResult, err := redisCache.GetCachedArticle(v)
+	myResult, err := s.cache.GetCachedArticle("")
 	fmt.Println(myResult)
 
 	counter := 0

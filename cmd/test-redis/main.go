@@ -29,7 +29,7 @@ const (
 )
 
 func main() {
-	//region //Мой сервер для тестов с использованием стандартного http
+	//region // Сервер для тестов с использованием стандартного http
 	//http.HandleFunc("/", handler)
 	//http.HandleFunc("/articles", handlerArticles)
 	//http.HandleFunc("/trending", handlerTrending)
@@ -38,24 +38,15 @@ func main() {
 
 	//region Загружаем конфигурацию
 	cfg := config.MustLoadFetchFlag() // ...или с использованием параметра командной строки
-	fmt.Println("Конфигурация загружена успешно")
+	fmt.Println("time=", time.Now(), "Конфигурация загружена успешно")
 	//endregion
 
 	//region Создаем логгер
+	fmt.Println("time=", time.Now(), "Создание логгера")
 	log := setupLogger(cfg.Env)
 	//добавим параметр env с помощью метода log.With
-	log = log.With(slog.String("env", cfg.Env))                                     // к каждому сообщению будет добавляться поле с информацией о текущем окружении
-	log.Info("initializing server", slog.String("address", cfg.HTTPServer.Address)) // Помимо сообщения выведем параметр с адресом
+	log = log.With(slog.String("env", cfg.Env)) // к каждому сообщению будет добавляться поле с информацией о текущем окружении
 	log.Debug("logger debug mode enabled")
-	//endregion
-
-	//region Создаем объект Storage
-	storage, err := sqlite.NewStorage(cfg.StoragePath)
-	if err != nil {
-		log.Error("failed to initialize storage", sl.Err(err))
-	} else {
-		log.Info("storage created")
-	}
 	//endregion
 
 	//region Создаем объект кэша Redis
@@ -64,11 +55,19 @@ func main() {
 	if err != nil {
 		log.Error("failed to initialize cache", sl.Err(err))
 	} else {
-		log.Info("cache created: ", cache)
+		log.Info("cache created")
 	}
 	//endregion
 
-	//region Создаем http-сервер
+	//region Создаем объект Storage Sqlite 3
+	log.Info("initializing storage", slog.String("storage_path", cfg.StoragePath)) // Помимо сообщения выведем параметр с адресом
+	storage, err := sqlite.NewStorage(cfg.StoragePath, cache)
+	if err != nil {
+		log.Error("failed to initialize storage", sl.Err(err))
+	} else {
+		log.Info("storage created")
+	}
+	//endregion
 
 	//region Создаем роутер
 	router := chi.NewRouter()
@@ -77,8 +76,6 @@ func main() {
 	// Дополнительная ссылка: https://developer.github.com/v3/#cross-origin-resource-sharing
 	router.Use(cors.Handler(cors.Options{
 		AllowedOrigins: []string{"https://*", "http://*"}, // пока что разрешаем все
-		//AllowedOrigins: []string{"http://localhost:3000"}, // Use this to allow specific origin hosts
-		//AllowedOrigins: []string{"https://87.242.85.156:*", "http://87.242.85.156:*"},
 		//AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		//AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		//ExposedHeaders:   []string{"Link"},
@@ -86,33 +83,15 @@ func main() {
 		//MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
 
-	//--------------------------------------
-	//По умолчанию middleware.Logger использует свой собственный внутренний логгер,
-	//который желательно переопределить, чтобы использовался наш,
-	//иначе могут возникнуть проблемы — например, со сбором логов.
-	//Либо можно написать собственный middleware для логирования запросов. Так и сделаем
+	// По умолчанию middleware.Logger использует свой собственный внутренний логгер,
+	// который желательно переопределить, чтобы использовался наш,
+	// иначе могут возникнуть проблемы — например, со сбором логов.
+	// Либо можно написать собственный middleware для логирования запросов. Так и сделаем
 	router.Use(middleware.RequestID) // Добавляет request_id в каждый запрос, для трейсинга
 	router.Use(middleware.Logger)    // Логирование всех запросов. Желательно написать собственный
 	router.Use(mwLogger.New(log))    // Собственный middleware для логирования запросов
 	router.Use(middleware.Recoverer) // Если где-то внутри сервера (обработчика запроса) произойдет паника, приложение не должно упасть
-	router.Use(middleware.URLFormat) // Парсер URLов поступающих запросов
-
-	//--------------------------------------------------------------------------------
-	//router.Post("/", save.New(log, storage))
-
-	// Все пути этого роутера будут начинаться с префикса `/api`
-	router.Route("/api", func(r chi.Router) {
-		// Подключаем базовую аутентификацию
-		r.Use(middleware.BasicAuth("url-shortener", map[string]string{
-			// Передаем в middleware креды
-			cfg.HTTPServer.User: cfg.HTTPServer.Password,
-			// Если у вас более одного пользователя, можно добавить остальные пары по аналогии.
-		}))
-
-		//	r.Post("/", save.New(log, storage))
-		//r.Post("/", save.New(log, storage))
-	})
-	log.Debug("Auth info", cfg.HTTPServer.User, cfg.HTTPServer.Password)
+	router.Use(middleware.URLFormat) // Парсер url поступающих запросов
 
 	// Прописываем маршруты с параметром {article_id}.
 	// В хендлере можно получить этот параметр по указанному имени
@@ -166,8 +145,6 @@ func main() {
 	log.Info("server stopped")
 	//endregion
 
-	//endregion
-
 }
 
 // setupLogger Создает логгер в зависимости от окружения с разными параметрами — TextHandler / JSONHandler и уровень LevelDebug / LevelInfo
@@ -190,13 +167,3 @@ func setupLogger(env string) *slog.Logger {
 
 	return log
 }
-
-//func handlerArticles(writer http.ResponseWriter, _ *http.Request) {
-//	fmt.Println("Hello articles!")
-//	writer.Write([]byte("Hi articles!"))
-//}
-//
-//func handlerTrending(writer http.ResponseWriter, _ *http.Request) {
-//	fmt.Println("Hello Trending!")
-//	writer.Write([]byte("Hi Trending!"))
-//}

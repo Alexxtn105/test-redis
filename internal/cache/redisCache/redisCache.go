@@ -54,11 +54,10 @@ func (c *Cache) SetCachedArticle() ([]models.ArticleInfo, error) {
 // GetCachedArticle Получение данных о статье из кеша Redis
 func (c *Cache) GetCachedArticle(key string) ([]models.ArticleInfo, error) {
 
-	//err := c.client.Set(ctx, "key", "value", 0).Err()
-	//if err != nil {
-	//	panic(err)
-	//}
-	//fmt.Println(c.client)
+	err := c.client.Set(ctx, "key", "value", 0).Err()
+	if err != nil {
+		return nil, err
+	}
 
 	return nil, nil
 }
