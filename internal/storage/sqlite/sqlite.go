@@ -40,26 +40,7 @@ type Storage struct {
 	db *sqlx.DB //из пакета "database/sql"
 }
 
-var schemaArticles = `
-	--таблица статей
-	--DROP TABLE articles;
-	CREATE TABLE IF NOT EXISTS articles(
-		id INTEGER PRIMARY KEY,
-		title TEXT NOT NULL UNIQUE,
-		text TEXT NOT NULL);
-	CREATE INDEX IF NOT EXISTS idx_theme ON articles(title);
-`
-
-var schemaComments = `
-	--таблица комментариев
-	DROP TABLE comments;
-	CREATE TABLE IF NOT EXISTS comments(
-		id INTEGER PRIMARY KEY,
-		article_id INTEGER NOT NULL,
-		text TEXT NOT NULL,
-		score REAL);
-`
-
+// ArticleInfo Структура инфо о статье
 type ArticleInfo struct {
 	Id     int64   `db:"id" json:"id"`
 	Title  string  `db:"title" json:"title"`
@@ -83,7 +64,28 @@ func NewStorage(storagePath string) (*Storage, error) {
 	// создаем таблицу, если ее еще нет
 	// exec the schema or fail; multi-statement Exec behavior varies between
 	// database drivers0;  pq will exec them all, sqlite3 won't, ymmv
+	var schemaArticles = `
+	--таблица статей
+	--DROP TABLE articles;
+	CREATE TABLE IF NOT EXISTS articles(
+		id INTEGER PRIMARY KEY,
+		title TEXT NOT NULL UNIQUE,
+		text TEXT NOT NULL);
+	CREATE INDEX IF NOT EXISTS idx_theme ON articles(title);
+`
+
 	db.MustExec(schemaArticles)
+
+	var schemaComments = `
+	--таблица комментариев
+	DROP TABLE comments;
+	CREATE TABLE IF NOT EXISTS comments(
+		id INTEGER PRIMARY KEY,
+		article_id INTEGER NOT NULL,
+		text TEXT NOT NULL,
+		score REAL);
+`
+
 	db.MustExec(schemaComments)
 
 	//заполняем данными (в пределах одной транзакции)0
@@ -197,208 +199,6 @@ func (s *Storage) getMaxArticleId() (int, error) {
 	return cnt[0], nil
 }
 
-//func NewStorage_OLD(storagePath string) (*Storage, error) {
-//	const op = "storage.sqlite.NewStorage" // Имя текущей функции для логов и ошибок
-//
-//	// Подключаемся к БД
-//	db, err := sql.Open("sqlite3", storagePath)
-//
-//	if err != nil {
-//		return nil, fmt.Errorf("%s: %w", op, err)
-//	}
-//
-//	// TODO: можно прикрутить миграции, для тренировки
-//	// создаем таблицу, если ее еще нет
-//	stmt, err := db.Prepare(`
-//--таблица статей
-//	CREATE TABLE IF NOT EXISTS articles(
-//		id INTEGER PRIMARY KEY,
-//		title TEXT NOT NULL UNIQUE,
-//		text TEXT NOT NULL);
-//	CREATE INDEX IF NOT EXISTS idx_theme ON articles(title);
-//	CREATE TABLE IF NOT EXISTS comments(
-//		id INTEGER PRIMARY KEY,
-//		text TEXT NOT NULL,
-//		score INTEGER);
-//`)
-//	if err != nil {
-//		return nil, fmt.Errorf("%s: %w", op, err)
-//	}
-//
-//	//обязательно закрываем, чтобы освободить ресурсы
-//	defer stmt.Close()
-//
-//	_, err = stmt.Exec()
-//	if err != nil {
-//		return nil, fmt.Errorf("%s: %w", op, err)
-//	}
-//
-//	//Таблица комментариев-----------------------
-//	stmt, err = db.Prepare(`
-//	--таблица комментариев
-//	CREATE TABLE IF NOT EXISTS comments(
-//		id INTEGER PRIMARY KEY,
-//		text TEXT NOT NULL,
-//		score INTEGER);
-//	`)
-//	if err != nil {
-//		return nil, fmt.Errorf("%s: %w", op, err)
-//	}
-//
-//	_, err = stmt.Exec()
-//	if err != nil {
-//		return nil, fmt.Errorf("%s: %w", op, err)
-//	}
-//
-//	////заполняем текстами
-//	//articles := []struct {
-//	//	title string
-//	//	text  string
-//	//}{
-//	//	{"title 1", "article 1"},
-//	//	{"title 2", "article 2"},
-//	//	{"title 3", "article 3"},
-//	//	{"title 4", "article 4"},
-//	//	{"title 5", "article 5"},
-//	//	{"title 6", "article 6"},
-//	//	{"title 7", "article 7"},
-//	//	{"title 8", "article 8"},
-//	//}
-//	//stmt, err = db.Prepare(`INSERT INTO articles (id, title, text) VALUES (?,?,?)`)
-//	//if err != nil {
-//	//	return nil, fmt.Errorf("%s: %w", op, err)
-//	//}
-//	//
-//	//for id, article := range articles {
-//	//	if _, err = stmt.Exec(id+1, article.title, article.text); err != nil {
-//	//		return nil, fmt.Errorf("%s: %w", op, err)
-//	//	}
-//	//}
-//	//
-//	////заполняем комментариями
-//	//comments := []struct {
-//	//	text  string
-//	//	score int64
-//	//}{
-//	//	{"comment 1", 50},
-//	//	{"comment 2", 51},
-//	//	{"comment 3", 52},
-//	//	{"comment 4", 53},
-//	//	{"comment 5", 54},
-//	//	{"comment 6", 55},
-//	//	{"comment 7", 56},
-//	//	{"comment 8", 57},
-//	//}
-//	//stmt, err = db.Prepare(`INSERT INTO COMMENTS (id, text, score) VALUES (?,?,?)`)
-//	//if err != nil {
-//	//	return nil, fmt.Errorf("%s: %w", op, err)
-//	//}
-//	//
-//	//for id, comment := range comments {
-//	//	if _, err = stmt.Exec(id+1, comment.text, comment.score); err != nil {
-//	//		return nil, fmt.Errorf("%s: %w", op, err)
-//	//	}
-//	//}
-//
-//	return &Storage{db: db}, nil
-//}
-
-// SaveURL сохранить
-//func (s *Storage) SaveURL(urlToSave string, alias string) (int64, error) {
-//	const op = "storage.sqlite.SaveURL"
-//
-//	// Подготавливаем запрос (проверка корректности синтаксиса)
-//	stmt, err := s.db.Prepare("INSERT INTO url(url, alias) VALUES (?, ?)")
-//	if err != nil {
-//		return 0, fmt.Errorf("%s: prepare statement: %w", op, err)
-//	}
-//
-//	//выполняем запрос
-//	res, err := stmt.Exec(urlToSave, alias)
-//	if err != nil {
-//		// Здесь мы приводим полученную ошибку ко внутреннему типу библиотеки sqlite3,
-//		// чтобы посмотреть, не является ли эта ошибка sqlite3.ErrConstraintUnique.
-//		// Если это так, значит, мы попытались добавить дубликат имеющейся записи. Об этом мы сообщим в вызывающую функцию, вернув уже свою ошибку для данной ситуации: storage.ErrURLExists. Получив ее, сервер сможет сообщить клиенту о том, что такой alias у нас уже есть.
-//		if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
-//			return 0, fmt.Errorf("%s: %w", op, storage.ErrURLExists)
-//		}
-//
-//		var e sqlite3.Error
-//		fmt.Println(e)
-//
-//		return 0, fmt.Errorf("%s: execute statement: %w", op, err)
-//	}
-//
-//	id, err := res.LastInsertId()
-//	if err != nil {
-//		return 0, fmt.Errorf("%s: failed to get last insert id: %w", op, err)
-//	}
-//
-//	//Возвращаем ID
-//	return id, nil
-//}
-
-//func (s *Storage) makeStructJSON(queryText string, w http.ResponseWriter) error {
-//
-//	// returns rows *sql.Rows
-//	rows, err := s.db.Query(queryText)
-//	if err != nil {
-//		return err
-//	}
-//	columns, err := rows.Columns()
-//	if err != nil {
-//		return err
-//	}
-//
-//	count := len(columns)
-//	values := make([]interface{}, count)
-//	scanArgs := make([]interface{}, count)
-//	for i := range values {
-//		scanArgs[i] = &values[i]
-//	}
-//
-//	masterData := make(map[string][]interface{})
-//
-//	for rows.Next() {
-//		err := rows.Scan(scanArgs...)
-//		if err != nil {
-//			return err
-//		}
-//		for i, v := range values {
-//
-//			x := v.([]byte)
-//
-//			//NOTE: FROM THE GO BLOG: JSON and GO - 25 Jan 2011:
-//			// The json package uses map[string]interface{} and []interface{} values to store arbitrary JSON objects and arrays; it will happily unmarshal any valid JSON blob into a plain interface{} value. The default concrete Go types are:
-//			//
-//			// bool for JSON booleans,
-//			// float64 for JSON numbers,
-//			// string for JSON strings, and
-//			// nil for JSON null.
-//
-//			if nx, ok := strconv.ParseFloat(string(x), 64); ok == nil {
-//				masterData[columns[i]] = append(masterData[columns[i]], nx)
-//			} else if b, ok := strconv.ParseBool(string(x)); ok == nil {
-//				masterData[columns[i]] = append(masterData[columns[i]], b)
-//			} else if "string" == fmt.Sprintf("%T", string(x)) {
-//				masterData[columns[i]] = append(masterData[columns[i]], string(x))
-//			} else {
-//				fmt.Printf("Failed on if for type %T of %v\n", x, x)
-//			}
-//
-//		}
-//	}
-//
-//	w.Header().Set("Content-Type", "application/json")
-//
-//	err = json.NewEncoder(w).Encode(masterData)
-//
-//	if err != nil {
-//		return err
-//	}
-//	return err
-//}
-
 // GetRandomData Получить случайную статью из таблицы
 func (s *Storage) GetRandomData() ([]models.ArticleInfo, error) {
 	const op = "storage.sqlite.GetRandomData"
@@ -473,22 +273,3 @@ func (s *Storage) GetData(id string) (string, error) {
 
 	return result, nil
 }
-
-// DeleteURL Удалить запись из БД по алиасу
-//func (s *Storage) DeleteURL(alias string) error {
-//	const op = "storage.sqlite.DeleteURL"
-//
-//	// Подготавливаем запрос (проверка корректности синтаксиса)
-//	stmt, err := s.db.Prepare("DELETE FROM url WHERe alias = ?")
-//	if err != nil {
-//		return fmt.Errorf("%s: prepare statement: %w", op, err)
-//	}
-//
-//	//выполняем запрос
-//	_, err = stmt.Exec(alias)
-//	if err != nil {
-//		return fmt.Errorf("%s: execute statement: %w", op, err)
-//	}
-//
-//	return nil
-//}
