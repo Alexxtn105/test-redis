@@ -4,14 +4,17 @@ package sqlite
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 	"math/rand"
+	"strconv"
 	"test-redis/internal/cache/redisCache"
 	"test-redis/internal/models"
 	"test-redis/internal/storage"
+	"time"
 )
 
 // Storage Структура объекта Storage
@@ -156,10 +159,10 @@ func (s *Storage) GetRandomData() ([]models.ArticleInfo, error) {
 	var result []models.ArticleInfo
 
 	// Сперва поищем в кеше redis
-	//result, err := s.cache.GetCachedArticle(strconv.Itoa(v))
-	//if err != nil {
-	//	fmt.Println(time.Now(), err)
-	//}
+	result, err := s.cache.GetCachedArticle(strconv.Itoa(v))
+	if err != nil {
+		fmt.Println(time.Now(), err)
+	}
 
 	// Если ничего не найдено, увеличиваем ид, и так 100 раз, потом выходим
 	if result == nil {
@@ -174,16 +177,16 @@ func (s *Storage) GetRandomData() ([]models.ArticleInfo, error) {
 				isFound = true
 
 				// Пишем найденное в кэш
-				//fmt.Println("set value to cache")
-				//
-				//// преобразуем структуру в []byte для хранения в кэше
-				//res, err := json.Marshal(result)
-				//if err != nil {
-				//	// TODO - разобраться с ошибкой
-				//	return result, fmt.Errorf("%s: cannot set value to cache: %w", op, err)
-				//} else {
-				//	s.cache.SetCachedArticle(strconv.Itoa(v), res)
-				//}
+				fmt.Println("set value to cache")
+
+				// преобразуем структуру в []byte для хранения в кэше
+				res, err := json.Marshal(result)
+				if err != nil {
+					// TODO - разобраться с ошибкой
+					return result, fmt.Errorf("%s: cannot set value to cache: %w", op, err)
+				} else {
+					s.cache.SetCachedArticle(strconv.Itoa(v), res)
+				}
 			} else {
 				counter++
 				v++

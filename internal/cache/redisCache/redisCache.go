@@ -45,7 +45,7 @@ func (c *Cache) SetKey(id string, value any, expiration time.Duration) error {
 // SetCachedArticle Получение данных о статье из кеша Redis
 func (c *Cache) SetCachedArticle(id string, value any) error {
 
-	err := c.client.Set(ctx, "article:"+id, value, 0).Err()
+	err := c.client.Set(ctx, "article:"+id, value, time.Second*100).Err()
 
 	if err != nil {
 		fmt.Println("error setting value ", err)
