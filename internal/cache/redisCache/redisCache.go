@@ -4,6 +4,7 @@ package redisCache
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/redis/go-redis/v9"
 	"test-redis/internal/models"
@@ -43,6 +44,7 @@ func (c *Cache) SetKey(id string, value any, expiration time.Duration) error {
 
 // SetCachedArticle Получение данных о статье из кеша Redis
 func (c *Cache) SetCachedArticle(id string, value any) error {
+
 	err := c.client.Set(ctx, "article:"+id, value, 0).Err()
 
 	if err != nil {
@@ -63,8 +65,13 @@ func (c *Cache) GetCachedArticle(id string) ([]models.ArticleInfo, error) {
 		return nil, err
 	}
 	var info []models.ArticleInfo
+	err = json.Unmarshal([]byte(raw), &info)
+	fmt.Println("got from cache:")
+	fmt.Println(info)
+	if err != nil {
+		return nil, fmt.Errorf("can't unmarshal raw value %s", "article:"+id)
+	}
 
-	info = append(info, models.ArticleInfo{Id: 0, Title: "", Text: "", Rating: nil})
 	return info, nil
 }
 

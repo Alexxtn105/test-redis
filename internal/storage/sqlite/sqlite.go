@@ -4,6 +4,7 @@ package sqlite
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/jmoiron/sqlx"
@@ -195,40 +196,42 @@ func (s *Storage) GetRandomData() ([]models.ArticleInfo, error) {
 		return nil, fmt.Errorf("%s: there is no data to display (min==max)", op)
 	}
 
-	isFound := false
 	var result []models.ArticleInfo
 
-	// TODO сперва поищем в кеше redis
-	//	myResult, err := s.cache.GetCachedArticle("")
-	myResult, err := s.cache.GetCachedArticleAsString(strconv.Itoa(v))
+	// Сперва поищем в кеше redis
+	result, err := s.cache.GetCachedArticle(strconv.Itoa(v))
 	if err != nil {
-		//return nil, err
 		fmt.Println(time.Now(), err)
-	} else {
-		fmt.Println("cache found")
-	}
-	fmt.Println(myResult)
-
-	counter := 0
-	for !isFound || counter > 100 {
-		if err := s.db.Select(&result, "SELECT id, title, text, (SELECT AVG(score) FROM comments WHERE score IS NOT NULL AND article_id= $1) as rating FROM articles WHERE id= $1", v); err != nil {
-			return nil, fmt.Errorf("%s: prepare statement: %w", op, err)
-		}
-
-		//если ничего не найдено, увеличиваем ид, и так 100 раз, потом выходим
-		if len(result) > 0 {
-			isFound = true
-		} else {
-			counter++
-			v++
-		}
 	}
 
-	//fmt.Printf("%+v\n", result)
-	// Пишем найденное в кэш
-	if myResult == "" {
-		fmt.Println("set value to cache")
-		s.cache.SetCachedArticle(strconv.Itoa(v), result)
+	// Если ничего не найдено, увеличиваем ид, и так 100 раз, потом выходим
+	if result == nil {
+		isFound := false
+		counter := 0
+		for !isFound || counter > 100 {
+			if err := s.db.Select(&result, "SELECT id, title, text, (SELECT AVG(score) FROM comments WHERE score IS NOT NULL AND article_id= $1) as rating FROM articles WHERE id= $1", v); err != nil {
+				return nil, fmt.Errorf("%s: select: %w", op, err)
+			}
+
+			if len(result) > 0 {
+				isFound = true
+
+				// Пишем найденное в кэш
+				fmt.Println("set value to cache")
+
+				// преобразуем структуру в []byte для хранения в кэше
+				res, err := json.Marshal(result)
+				if err != nil {
+					// TODO - разобраться с ошибкой
+					return result, fmt.Errorf("%s: cannot set value to cache: %w", op, err)
+				} else {
+					s.cache.SetCachedArticle(strconv.Itoa(v), res)
+				}
+			} else {
+				counter++
+				v++
+			}
+		}
 	}
 
 	return result, nil
