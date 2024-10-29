@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
 	"io/ioutil"
 	"log/slog"
@@ -30,11 +29,11 @@ func GetRandArticles(log *slog.Logger, dataGetter DataGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.article.GetArticles"
 
-		//пишем в лог
-		log = log.With(
-			slog.String("op", op),
-			slog.String("request_id", middleware.GetReqID(r.Context())),
-		)
+		////пишем в лог !!! ВНИМАНИЕ!!!! НА БОЛЬШИХ НАГРУЗКАХ КАПЕЦ В ЛОГАХ!!!!
+		//log = log.With(
+		//	slog.String("op", op),
+		//	slog.String("request_id", middleware.GetReqID(r.Context())),
+		//)
 
 		//var resData []models.ArticleInfo
 
@@ -53,23 +52,12 @@ func GetRandArticles(log *slog.Logger, dataGetter DataGetter) http.HandlerFunc {
 			return
 		}
 
-		//		log.Info("got data", slog.String("data", resData))
+		//log.Info("got data", slog.String("data", resData))
 		log.Info("got data")
 
 		//пишем в ответ
 		res, err := json.Marshal(resData)
 		w.Write(res)
-
-		// Делаем редирект на найденный URL
-		//http.Redirect(w, r, resData, http.StatusFound)
-
-		// В последней строчке делаем редирект со статусом http.StatusFound — код HTTP 302. Он обычно используется для временных перенаправлений, а не постоянных, за которые отвечает 301.
-		// Наш сервис может перенаправлять на разные URL в зависимости от ситуации
-		// (мы ведь можем удалить или изменить сохраненный URL),
-		// поэтому есть смысл использовать именно http.StatusFound.
-		// Это важно для систем кэширования и поисковых машин —
-		// они обычно кэшируют редиректы с кодом 301, то есть считают их постоянными.
-		// Нам такое поведение не нужно.
 	}
 }
 
@@ -78,11 +66,11 @@ func GetArticle(log *slog.Logger, dataGetter DataGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.article.GetArticle"
 
-		//пишем в лог
-		log = log.With(
-			slog.String("op", op),
-			slog.String("request_id", middleware.GetReqID(r.Context())),
-		)
+		//пишем в лог !!! ВНИМАНИЕ!!!! НА БОЛЬШИХ НАГРУЗКАХ КАПЕЦ В ЛОГАХ!!!!
+		//log = log.With(
+		//	slog.String("op", op),
+		//	slog.String("request_id", middleware.GetReqID(r.Context())),
+		//)
 
 		// Роутер chi позволяет делать вот такие финты - получать GET-параметры по их именам.
 		// Имена определяются при добавлении хэндлера в роутер.

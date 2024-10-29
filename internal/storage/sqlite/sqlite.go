@@ -4,16 +4,14 @@ package sqlite
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
-	"strconv"
+	"math/rand"
 	"test-redis/internal/cache/redisCache"
 	"test-redis/internal/models"
 	"test-redis/internal/storage"
-	"time"
 )
 
 // Storage Структура объекта Storage
@@ -48,90 +46,47 @@ func NewStorage(storagePath string, cache *redisCache.Cache) (*Storage, error) {
 		text TEXT NOT NULL);
 	CREATE INDEX IF NOT EXISTS idx_theme ON articles(title);
 `
-
 	db.MustExec(schemaArticles)
 
 	var schemaComments = `
 	--таблица комментариев
-	DROP TABLE comments;
+	--DROP TABLE comments;
 	CREATE TABLE IF NOT EXISTS comments(
 		id INTEGER PRIMARY KEY,
 		article_id INTEGER NOT NULL,
 		text TEXT NOT NULL,
 		score REAL);
 `
-
 	db.MustExec(schemaComments)
 
-	//заполняем данными (в пределах одной транзакции)0
-	//tx := db.MustBegin()
-	//tx.MustExec("INSERT INTO articles (id, title, text) VALUES ($1,$2, $3)", 1, "Title 1", "This is article 1")
-	//tx.MustExec("INSERT INTO articles (id, title, text) VALUES ($1,$2, $3)", 2, "Title 2", "This is article 2")
-	//tx.MustExec("INSERT INTO articles (id, title, text) VALUES ($1,$2, $3)", 3, "Title 3", "This is article 3")
-	//tx.MustExec("INSERT INTO articles (id, title, text) VALUES ($1,$2, $3)", 4, "Title 4", "This is article 4")
-	//tx.MustExec("INSERT INTO articles (id, title, text) VALUES ($1,$2, $3)", 5, "Title 5", "This is article 5")
-	//tx.MustExec("INSERT INTO articles (id, title, text) VALUES ($1,$2, $3)", 6, "Title 6", "This is article 6")
-	//tx.MustExec("INSERT INTO articles (id, title, text) VALUES ($1,$2, $3)", 7, "Title 7", "This is article 7")
+	//region Заполнение данными статей
 	//
-	//// Именованные запросы могут использовать структуры,
-	//// поэтому, если у вас имеется структура, (например person := &User{}),
-	//// которую необходимо заполнить, Вы можете передать ее как &person:
-	//// tx.NamedExec("INSERT INTO user (first_name, last_name, email) VALUES (:first_name, :last_name, :email)", &User{FirstName: "Jane", LastName: "Citizen", Email: "jane.citzen@example.com"})
-	//tx.Commit()
-
-	//region Заполнение данными
-	tx2 := db.MustBegin()
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 1, "Comment 1-1", 2)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 1, "Comment 1-2", 2)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 1, "Comment 1-3", 2)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 1, "Comment 1-4", 3)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 1, "Comment 1-5", 3)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 1, "Comment 1-6", 3)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 1, "Comment 1-7", 3)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 1, "Comment 1-7", 4)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 2, "Comment2-1", 3)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 2, "Comment2-2", 3)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 2, "Comment2-3", 3)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 2, "Comment2-4", 4)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 2, "Comment2-5", 4)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 2, "Comment2-6", 4)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 2, "Comment2-7", 4)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 3, "Comment3-1", 4)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 3, "Comment3-2", 4)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 3, "Comment3-3", 4)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 3, "Comment3-4", 4)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 3, "Comment3-5", 5)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 3, "Comment3-6", 5)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 3, "Comment3-7", 5)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 4, "Comment4-1", 6)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 4, "Comment4-2", 6)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 4, "Comment4-3", 6)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 4, "Comment4-4", 7)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 4, "Comment4-5", 7)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 4, "Comment4-6", 7)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 4, "Comment4-7", 7)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 5, "Comment5-1", 7)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 5, "Comment5-2", 7)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 5, "Comment5-3", 7)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 5, "Comment5-4", 8)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 5, "Comment5-5", 8)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 5, "Comment5-6", 8)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 5, "Comment5-7", 8)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 6, "Comment6-1", 7)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 6, "Comment6-2", 5)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 6, "Comment6-3", 5)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 6, "Comment6-4", 8)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 6, "Comment6-5", 8)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 6, "Comment6-6", 8)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 6, "Comment6-7", 8)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 7, "Comment7-1", 9)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 7, "Comment7-2", 5)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 7, "Comment7-3", 5)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 7, "Comment7-4", 8)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 7, "Comment7-5", 8)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 7, "Comment7-6", 9)
-	tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", 7, "Comment7-7", 9)
-	tx2.Commit()
+	//tx1 := db.MustBegin()
+	//title := ""
+	//article := ""
+	//for i := 1; i < 100; i++ {
+	//	title = fmt.Sprintf("Title %d", i)
+	//	article = fmt.Sprintf("This is article %d", i)
+	//	tx1.MustExec("INSERT INTO articles (title, text) VALUES ($1,$2)", title, article)
+	//}
+	//tx1.Commit()
+	//endregion
+	//region Заполнение данными комментариев
+	//min := 0
+	//max := 100
+	//
+	//tx2 := db.MustBegin()
+	//
+	//comment := ""
+	//for i := 1; i < 100; i++ {
+	//	for j := 1; j < 100; j++ {
+	//		v := rand.Intn(max-min) + min // range is min to max
+	//
+	//		comment = fmt.Sprintf("comment %d-%d", i, j)
+	//		tx2.MustExec("INSERT INTO comments (article_id, text, score) VALUES ($1,$2, $3)", i, comment, v)
+	//	}
+	//}
+	//tx2.Commit()
 
 	//endregion
 
@@ -179,6 +134,8 @@ func (s *Storage) GetRandomData() ([]models.ArticleInfo, error) {
 	const op = "storage.sqlite.GetRandomData"
 
 	//берем случайное число в диапазоне от минимального до максимального ид статьи
+	min := 1
+	max := 100
 	//min, err := s.getMinArticleId()
 	//if err != nil {
 	//	return nil, fmt.Errorf("%s: get min article: %w", op, err)
@@ -189,8 +146,8 @@ func (s *Storage) GetRandomData() ([]models.ArticleInfo, error) {
 	//}
 
 	//собственно случайное значение
-	//	v := rand.Intn(max-min) + min // range is min to max
-	v := 2
+	v := rand.Intn(max-min) + min // range is min to max
+	//v := 2
 
 	if v <= 0 {
 		return nil, fmt.Errorf("%s: there is no data to display (min==max)", op)
@@ -199,10 +156,10 @@ func (s *Storage) GetRandomData() ([]models.ArticleInfo, error) {
 	var result []models.ArticleInfo
 
 	// Сперва поищем в кеше redis
-	result, err := s.cache.GetCachedArticle(strconv.Itoa(v))
-	if err != nil {
-		fmt.Println(time.Now(), err)
-	}
+	//result, err := s.cache.GetCachedArticle(strconv.Itoa(v))
+	//if err != nil {
+	//	fmt.Println(time.Now(), err)
+	//}
 
 	// Если ничего не найдено, увеличиваем ид, и так 100 раз, потом выходим
 	if result == nil {
@@ -217,16 +174,16 @@ func (s *Storage) GetRandomData() ([]models.ArticleInfo, error) {
 				isFound = true
 
 				// Пишем найденное в кэш
-				fmt.Println("set value to cache")
-
-				// преобразуем структуру в []byte для хранения в кэше
-				res, err := json.Marshal(result)
-				if err != nil {
-					// TODO - разобраться с ошибкой
-					return result, fmt.Errorf("%s: cannot set value to cache: %w", op, err)
-				} else {
-					s.cache.SetCachedArticle(strconv.Itoa(v), res)
-				}
+				//fmt.Println("set value to cache")
+				//
+				//// преобразуем структуру в []byte для хранения в кэше
+				//res, err := json.Marshal(result)
+				//if err != nil {
+				//	// TODO - разобраться с ошибкой
+				//	return result, fmt.Errorf("%s: cannot set value to cache: %w", op, err)
+				//} else {
+				//	s.cache.SetCachedArticle(strconv.Itoa(v), res)
+				//}
 			} else {
 				counter++
 				v++
