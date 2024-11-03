@@ -144,6 +144,47 @@ func GetTestData(log *slog.Logger) http.HandlerFunc {
 	}
 }
 
+
+
+func GetUserById(log *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Роутер chi позволяет делать вот такие финты - получать GET-параметры по их именам.
+		// Имена определяются при добавлении хэндлера в роутер.
+		userId := chi.URLParam(r, "user_id")
+		if userId == "" {
+			log.Info("user_id is empty")
+			render.JSON(w, r, resp.Error("not found"))
+			return
+		}
+
+
+		url := "https://jsonplaceholder.typicode.com/users/" + userId
+		method := "GET"
+
+		client := &http.Client{}
+		req, err := http.NewRequest(method, url, nil)
+
+		if err != nil {
+			log.Error("failed to create request", sl.Err(err))
+			return
+		}
+		res, err := client.Do(req)
+		if err != nil {
+			log.Error("failed to get data", sl.Err(err))
+			return
+		}
+		defer res.Body.Close()
+
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			log.Error("failed to read data", sl.Err(err))
+			//fmt.Println(err)
+			return
+		}
+		w.Write(body)
+	}
+}
+
 //func responseOK(w http.ResponseWriter, r *http.Request, alias string) {
 //	render.JSON(w, r, Response{
 //		Response: resp.OK(),

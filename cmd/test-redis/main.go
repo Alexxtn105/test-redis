@@ -100,7 +100,9 @@ func main() {
 
 	router.Get("/article/{article_id}", article.GetArticle(log, storage))
 	router.Get("/articles", article.GetRandArticles(log, storage))
+	//router.Get("/articles", article.GetTestData(log))
 	router.Get("/test", article.GetTestData(log))
+	router.Get("/users/{user_id}", article.GetUserById(log))
 	//endregion
 
 	//region ЗАПУСК и ОСТАНОВКА СЕРВЕРА
